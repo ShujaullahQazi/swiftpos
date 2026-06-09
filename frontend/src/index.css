@@ -1,0 +1,422 @@
+/* SwiftPOS Design System - Light Theme */
+
+:root {
+  /* Font Families */
+  --font-heading: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+
+  /* Colors */
+  --bg-page: #f8fafc;        /* Soft gray-blue page background */
+  --bg-card: #ffffff;        /* Pure white cards & panels */
+  --bg-sidebar: #0f172a;     /* Deep navy/slate for sidebar contrast */
+  --bg-hover: #f1f5f9;       /* Light gray hover state */
+  --bg-active: #e2e8f0;      /* Active selection background */
+
+  /* Text Colors */
+  --text-primary: #0f172a;    /* High contrast dark text */
+  --text-secondary: #475569;  /* Muted grey-blue for descriptions */
+  --text-muted: #94a3b8;     /* Low-contrast placeholder text */
+  --text-inverse: #ffffff;   /* White text on dark backgrounds */
+
+  /* Theme Accents (Emerald/Mint Green) */
+  --accent: #10b981;         /* Primary brand color */
+  --accent-hover: #059669;   /* Darker accent for hovers */
+  --accent-light: #ecfdf5;   /* Very light tint for tags/borders */
+  --accent-text: #047857;    /* Dark emerald text for contrast on green tint */
+
+  /* Semantic Status Colors */
+  --danger: #ef4444;
+  --danger-light: #fef2f2;
+  --danger-text: #991b1b;
+  
+  --warning: #f59e0b;
+  --warning-light: #fffbeb;
+  --warning-text: #92400e;
+
+  --success: #10b981;
+  --success-light: #ecfdf5;
+  --success-text: #047857;
+
+  --info: #3b82f6;
+  --info-light: #eff6ff;
+  --info-text: #1e40af;
+
+  /* Borders & Dividers */
+  --border: #e2e8f0;
+  --border-focus: #10b981;
+
+  /* Shadows (Premium Glassy Look) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+
+  /* Border Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* Layout Constants */
+  --sidebar-width: 260px;
+  --header-height: 70px;
+}
+
+/* Reset & Base Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  outline: none;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-card);
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.form-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.form-input.error {
+  border-color: var(--danger);
+}
+
+.form-error {
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Button Variants */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}
+
+.btn-secondary {
+  background-color: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-success {
+  background-color: var(--success-light);
+  color: var(--success-text);
+}
+
+.badge-danger {
+  background-color: var(--danger-light);
+  color: var(--danger-text);
+}
+
+.badge-warning {
+  background-color: var(--warning-light);
+  color: var(--warning-text);
+}
+
+.badge-info {
+  background-color: var(--info-light);
+  color: var(--info-text);
+}
+
+/* Skeleton Loading helper */
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+  color: transparent !important;
+}
+
+.skeleton * {
+  visibility: hidden;
+}
+
+/* Responsive media queries */
+@media (max-width: 1024px) {
+  .mobile-menu-btn {
+    display: block !important;
+  }
+}
+
+@media (max-width: 768px) {
+  aside {
+    display: none !important;
+  }
+  .mobile-nav-bar {
+    display: flex !important;
+  }
+  main.page-content {
+    margin-left: 0 !important;
+    padding-bottom: 84px !important; /* height of bottom nav + extra padding */
+  }
+}
+
+/* Print Styles for thermal receipt printing */
+@media print {
+  /* Hide standard page layout and UI buttons */
+  aside, header, nav, .mobile-nav-bar, .pos-terminal-layout, button, select, input, .receipt-modal-actions, .toast, [role="status"] {
+    display: none !important;
+  }
+
+  /* Reset body & root layouts for clean print content */
+  body, #root, div[style*="display: flex"] {
+    background: none !important;
+    background-color: #ffffff !important;
+    height: auto !important;
+    min-height: 0 !important;
+    display: block !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  main.page-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    min-height: 0 !important;
+  }
+
+  /* Reset modal overlays for direct document print */
+  .receipt-modal-overlay {
+    position: static !important;
+    background: none !important;
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+
+  .receipt-modal-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Printable receipt typography & paper sizing */
+  .printable-receipt {
+    width: 76mm !important; /* standard thermal receipt size */
+    margin: 0 auto !important;
+    padding: 6mm !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+  }
+
+  .printable-receipt h2 {
+    color: #000000 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+
+  /* Helper print layout classes */
+  .receipt-divider {
+    border-top: 1px dashed #000000 !important;
+    margin: 8px 0 !important;
+    height: 0 !important;
+  }
+
+  .receipt-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    margin-bottom: 4px !important;
+  }
+
+  .receipt-row.bold {
+    font-weight: bold !important;
+  }
+
+  .receipt-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 8px 0 !important;
+  }
+
+  .receipt-table th {
+    border-bottom: 1px dashed #000000 !important;
+    padding-bottom: 4px !important;
+    font-weight: bold !important;
+    text-align: left !important;
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+
+  .receipt-table td {
+    padding: 4px 0 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+
+  /* Remove default browser print margin markers (page count, headers) */
+  @page {
+    size: auto;
+    margin: 0mm;
+  }
+}
+
