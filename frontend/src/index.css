@@ -6,29 +6,42 @@
   --font-body: 'Plus Jakarta Sans', sans-serif;
 
   /* Colors */
-  --bg-page: #f8fafc;        /* Soft gray-blue page background */
-  --bg-card: #ffffff;        /* Pure white cards & panels */
-  --bg-sidebar: #0f172a;     /* Deep navy/slate for sidebar contrast */
-  --bg-hover: #f1f5f9;       /* Light gray hover state */
-  --bg-active: #e2e8f0;      /* Active selection background */
+  --bg-page: #f8fafc;
+  /* Soft gray-blue page background */
+  --bg-card: #ffffff;
+  /* Pure white cards & panels */
+  --bg-sidebar: #0f172a;
+  /* Deep navy/slate for sidebar contrast */
+  --bg-hover: #f1f5f9;
+  /* Light gray hover state */
+  --bg-active: #e2e8f0;
+  /* Active selection background */
 
   /* Text Colors */
-  --text-primary: #0f172a;    /* High contrast dark text */
-  --text-secondary: #475569;  /* Muted grey-blue for descriptions */
-  --text-muted: #94a3b8;     /* Low-contrast placeholder text */
-  --text-inverse: #ffffff;   /* White text on dark backgrounds */
+  --text-primary: #0f172a;
+  /* High contrast dark text */
+  --text-secondary: #475569;
+  /* Muted grey-blue for descriptions */
+  --text-muted: #94a3b8;
+  /* Low-contrast placeholder text */
+  --text-inverse: #ffffff;
+  /* White text on dark backgrounds */
 
   /* Theme Accents (Emerald/Mint Green) */
-  --accent: #10b981;         /* Primary brand color */
-  --accent-hover: #059669;   /* Darker accent for hovers */
-  --accent-light: #ecfdf5;   /* Very light tint for tags/borders */
-  --accent-text: #047857;    /* Dark emerald text for contrast on green tint */
+  --accent: #10b981;
+  /* Primary brand color */
+  --accent-hover: #059669;
+  /* Darker accent for hovers */
+  --accent-light: #ecfdf5;
+  /* Very light tint for tags/borders */
+  --accent-text: #047857;
+  /* Dark emerald text for contrast on green tint */
 
   /* Semantic Status Colors */
   --danger: #ef4444;
   --danger-light: #fef2f2;
   --danger-text: #991b1b;
-  
+
   --warning: #f59e0b;
   --warning-light: #fffbeb;
   --warning-text: #92400e;
@@ -79,13 +92,21 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-heading);
   font-weight: 600;
   color: var(--text-primary);
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
@@ -99,6 +120,43 @@ button {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* TopBar clock text — horizontal on desktop, stacks vertically on mobile */
+.topbar-clock-text {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.topbar-time {
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.topbar-time-digits {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.topbar-time-ampm {
+  font-size: 13px;
+  text-transform: lowercase;
+  color: var(--text-secondary);
+  display: inline-block;
+  width: 22px;
+  text-align: left;
+}
+
+.topbar-date {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+
 a {
   text-decoration: none;
   color: inherit;
@@ -106,18 +164,35 @@ a {
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideInRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .animate-fade-in {
@@ -132,6 +207,7 @@ a {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -302,15 +378,119 @@ a {
   aside {
     display: none !important;
   }
+
   .mobile-nav-bar {
     display: flex !important;
   }
+
   main.page-content {
     margin-left: 0 !important;
-    padding-bottom: 84px !important; /* height of bottom nav + extra padding */
+    padding: 16px 16px 100px !important;
+    overflow-x: hidden !important;
   }
+
   .topbar-online-status {
     display: none !important;
+  }
+
+  /* ── TopBar clock: stack date/time vertically like Windows taskbar ── */
+  .topbar-clock {
+    gap: 0 !important;
+    padding: 4px 8px !important;
+    align-items: center !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  }
+
+  .topbar-clock-icon {
+    display: none !important;
+    /* Hide icon on mobile */
+  }
+
+  .topbar-clock-text {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    /* Right-align text like Windows */
+    gap: 3px !important;
+    line-height: 1.1 !important;
+  }
+
+  .topbar-time {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+    display: flex !important;
+    align-items: baseline !important;
+    justify-content: flex-end !important;
+    gap: 1px !important;
+  }
+
+  .topbar-time-ampm {
+    color: var(--text-primary) !important;
+    font-size: 12px !important;
+    width: 17px !important;
+    text-align: right !important;
+    /* Fix to right */
+  }
+
+  .topbar-date {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+  }
+
+  /* ── Page headers: stack vertically ── */
+  .page-header-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .page-header-row .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* ── Filter bar: stack vertically ── */
+  .page-filter-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .page-search-wrapper {
+    min-width: unset !important;
+    width: 100% !important;
+  }
+
+  /* ── Dashboard: stack chart grid to 1 col ── */
+  .dashboard-grid-main {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-stat-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+
+
+  /* ── Table cards: reduce padding ── */
+  .page-content div[style*="padding: 24px"] {
+    padding: 16px !important;
+  }
+}
+
+/* Very small phones (≤ 480px) */
+@media (max-width: 480px) {
+  main.page-content {
+    padding: 12px 12px 100px !important;
+  }
+
+  .dashboard-stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .page-header-row h2 {
+    font-size: 18px !important;
   }
 }
 
@@ -327,6 +507,7 @@ a {
 
 /* Tablet & Mobile (≤ 1024px): activate drawer UI */
 @media (max-width: 1024px) {
+
   /* Hide the desktop cart column */
   .pos-cart-desktop {
     display: none !important;
@@ -353,7 +534,7 @@ a {
     padding: 14px 20px;
     font-size: 14px;
     font-weight: 700;
-    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.40), 0 2px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.40), 0 2px 8px rgba(0, 0, 0, 0.15);
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   }
@@ -361,7 +542,7 @@ a {
   .pos-cart-fab:hover {
     background: var(--accent-hover);
     transform: translateY(-2px);
-    box-shadow: 0 12px 32px rgba(16, 185, 129, 0.50), 0 4px 12px rgba(0,0,0,0.18);
+    box-shadow: 0 12px 32px rgba(16, 185, 129, 0.50), 0 4px 12px rgba(0, 0, 0, 0.18);
   }
 
   .pos-cart-fab:active {
@@ -384,7 +565,7 @@ a {
     align-items: center;
     justify-content: center;
     border: 2px solid #fff;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   }
 
   /* Show backdrop */
@@ -489,13 +670,13 @@ a {
   ─────────────────────────────────────────────────────────────── */
 
   /* Step 1: Hide everything at document root level */
-  body > * {
+  body>* {
     display: none !important;
     visibility: hidden !important;
   }
 
   /* Step 2: Show ONLY the receipt modal portal (direct child of body) */
-  body > .receipt-modal-overlay {
+  body>.receipt-modal-overlay {
     display: block !important;
     visibility: visible !important;
     position: static !important;
@@ -509,12 +690,13 @@ a {
   }
 
   /* Step 3: Make all descendants of the receipt overlay visible */
-  body > .receipt-modal-overlay * {
+  body>.receipt-modal-overlay * {
     visibility: visible !important;
   }
 
   /* Step 4: Reset body/html for clean print surface */
-  html, body {
+  html,
+  body {
     background: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -608,9 +790,17 @@ a {
     margin: 6px 0 !important;
   }
 
-  .receipt-table thead { display: table-header-group !important; }
-  .receipt-table tbody { display: table-row-group !important; }
-  .receipt-table tr   { display: table-row !important; }
+  .receipt-table thead {
+    display: table-header-group !important;
+  }
+
+  .receipt-table tbody {
+    display: table-row-group !important;
+  }
+
+  .receipt-table tr {
+    display: table-row !important;
+  }
 
   .receipt-table th {
     display: table-cell !important;
@@ -636,4 +826,3 @@ a {
     margin: 0;
   }
 }
-

@@ -16,6 +16,8 @@ export const AppLayout: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
+        minWidth: 0,        /* ← prevents flex child from expanding past viewport */
+        overflow: 'hidden', /* ← clips any overflowing children horizontally */
       }}>
         {/* Top Header Bar */}
         <TopBar />

@@ -116,7 +116,7 @@ export const CustomersPage: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Customer Directory</h2>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Total Registered: {totalItems}</p>
@@ -135,7 +135,7 @@ export const CustomersPage: React.FC = () => {
         border: '1px solid var(--border)',
         justifyContent: 'flex-end',
       }}>
-        <div style={{ position: 'relative', width: '320px' }}>
+        <div className="page-search-wrapper" style={{ position: 'relative', minWidth: '260px' }}>
           <input
             type="text"
             className="form-input"

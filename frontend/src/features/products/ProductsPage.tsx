@@ -153,7 +153,7 @@ export const ProductsPage: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Inventory Management</h2>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Total Products: {totalItems}</p>
@@ -164,7 +164,7 @@ export const ProductsPage: React.FC = () => {
       </div>
 
       {/* Filters & Search Row */}
-      <div style={{
+      <div className="page-filter-bar" style={{
         display: 'flex',
         flexWrap: 'wrap',
         gap: '16px',
@@ -176,7 +176,7 @@ export const ProductsPage: React.FC = () => {
         border: '1px solid var(--border)',
       }}>
         {/* Category Filter Pills */}
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', flex: 1 }}>
           <button
             onClick={() => { setSelectedCategory('all'); setPage(1); }}
             style={{
@@ -187,6 +187,7 @@ export const ProductsPage: React.FC = () => {
               backgroundColor: selectedCategory === 'all' ? 'var(--accent-light)' : 'transparent',
               color: selectedCategory === 'all' ? 'var(--accent-text)' : 'var(--text-secondary)',
               border: `1px solid ${selectedCategory === 'all' ? 'var(--accent)' : 'var(--border)'}`,
+              whiteSpace: 'nowrap',
             }}
           >
             All Categories
@@ -212,7 +213,7 @@ export const ProductsPage: React.FC = () => {
         </div>
 
         {/* Search Input */}
-        <div style={{ position: 'relative', minWidth: '260px' }}>
+        <div className="page-search-wrapper" style={{ position: 'relative', minWidth: '260px' }}>
           <input
             type="text"
             className="form-input"
