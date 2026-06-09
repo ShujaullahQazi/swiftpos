@@ -38,7 +38,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuToggle }) => {
       {/* Right: Date/Time & Network Status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
         {/* Network Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--success-text)', fontWeight: 600 }}>
+        <div className="topbar-online-status" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--success-text)', fontWeight: 600 }}>
           <Wifi size={16} />
           <span>Online</span>
         </div>

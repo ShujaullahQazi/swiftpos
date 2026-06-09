@@ -4,8 +4,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { Store, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('admin@swiftpos.com');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,22 +139,7 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        {/* Demo Hint Banner */}
-        <div style={{
-          marginTop: '32px',
-          padding: '16px',
-          backgroundColor: 'var(--accent-light)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-md)',
-        }}>
-          <h4 style={{ fontSize: '13px', color: 'var(--accent-text)', fontWeight: 700, marginBottom: '4px' }}>
-            Quick Demo Login:
-          </h4>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-            Email: <strong style={{ color: 'var(--text-primary)' }}>admin@swiftpos.com</strong><br />
-            Password: <strong style={{ color: 'var(--text-primary)' }}>password</strong>
-          </p>
-        </div>
+
       </div>
     </div>
   );

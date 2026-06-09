@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 import { useToast } from '../../hooks/useToast';
-import { Search, Plus, Minus, Trash2, User, Percent, Receipt, CreditCard, DollarSign, Smartphone, Loader, X, Check, Printer } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, User, Percent, Receipt, CreditCard, DollarSign, Smartphone, Loader, X, Check, Printer, ShoppingCart } from 'lucide-react';
 
 interface Category {
   id: number;
@@ -54,6 +54,9 @@ export const PosPage: React.FC = () => {
   // Modals
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+
+  // Mobile cart drawer
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
 
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'mobile'>('cash');
@@ -350,6 +353,163 @@ export const PosPage: React.FC = () => {
     );
   }
 
+  const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Shared Cart Panel — rendered both in desktop sidebar and mobile drawer
+  const cartPanelContent = (
+    <>
+      {/* Cart Header */}
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Current Checkout Cart</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="badge badge-info" style={{ borderRadius: '12px' }}>
+            {totalCartItems} Items
+          </span>
+          {/* Close button — only visible in drawer context */}
+          <button
+            className="pos-cart-drawer-close-btn"
+            onClick={() => setIsCartDrawerOpen(false)}
+            style={{ color: 'var(--text-muted)', display: 'none' }}
+            aria-label="Close cart"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Customer Selector */}
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-hover)', flexShrink: 0 }}>
+        <div style={{ position: 'relative' }}>
+          <select
+            className="form-input"
+            style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }}
+            value={selectedCustomer ? selectedCustomer.id.toString() : ''}
+            onChange={(e) => {
+              const id = e.target.value;
+              if (!id) setSelectedCustomer(null);
+              else {
+                const match = customers.find(c => c.id.toString() === id);
+                if (match) setSelectedCustomer(match);
+              }
+            }}
+          >
+            <option value="">Walking Customer (Default)</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
+            ))}
+          </select>
+          <User size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+        </div>
+      </div>
+
+      {/* Cart Item rows list */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+        {cart.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {cart.map((item) => (
+              <div key={item.product.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                paddingBottom: '12px',
+                borderBottom: '1px solid var(--bg-hover)',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h5 style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.product.name}
+                  </h5>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    {formatCurrency(item.product.price)} each
+                  </span>
+                </div>
+
+                {/* Quantity Actions */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
+                  <button
+                    onClick={() => updateQuantity(item.product.id, -1)}
+                    style={{ padding: '4px 8px', backgroundColor: 'var(--bg-hover)' }}
+                  >
+                    <Minus size={12} />
+                  </button>
+                  <span style={{ padding: '0 8px', fontSize: '12px', fontWeight: 700, minWidth: '24px', textAlign: 'center' }}>
+                    {item.quantity}
+                  </span>
+                  <button
+                    onClick={() => updateQuantity(item.product.id, 1)}
+                    style={{ padding: '4px 8px', backgroundColor: 'var(--bg-hover)' }}
+                  >
+                    <Plus size={12} />
+                  </button>
+                </div>
+
+                {/* Delete Item */}
+                <button
+                  onClick={() => removeFromCart(item.product.id)}
+                  style={{ color: 'var(--danger)', padding: '4px' }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+            <Receipt size={32} style={{ marginBottom: '10px', opacity: 0.5 }} />
+            <p style={{ fontSize: '13px', fontWeight: 600 }}>Checkout cart is empty</p>
+            <p style={{ fontSize: '11px' }}>Click items on the left to add them here</p>
+          </div>
+        )}
+      </div>
+
+      {/* Cart Totals & Payments Panel */}
+      <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-hover)', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+        {/* Subtotal */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+          <span style={{ color: 'var(--text-secondary)' }}>Subtotal</span>
+          <span style={{ fontWeight: 600 }}>{formatCurrency(cartSubtotal)}</span>
+        </div>
+
+        {/* Discount input picker */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', fontSize: '13px' }}>
+          <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Percent size={12} /> Discount (%)
+          </span>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            className="form-input"
+            style={{ width: '70px', padding: '4px 8px', height: '28px', textAlign: 'right', fontSize: '12px' }}
+            value={discountPercent || ''}
+            onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+          />
+        </div>
+
+        {/* Tax (8%) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+          <span style={{ color: 'var(--text-secondary)' }}>Tax (8.00%)</span>
+          <span style={{ fontWeight: 600 }}>{formatCurrency(cartTax)}</span>
+        </div>
+
+        {/* Total */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 800, marginTop: '8px', borderTop: '1px dashed var(--border)', paddingTop: '10px' }}>
+          <span>Total Payable</span>
+          <span style={{ color: 'var(--accent-text)' }}>{formatCurrency(cartTotal)}</span>
+        </div>
+
+        {/* Pay Button */}
+        <button
+          onClick={() => { setIsCartDrawerOpen(false); handleOpenPayment(); }}
+          disabled={cart.length === 0}
+          className="btn btn-primary"
+          style={{ width: '100%', height: '46px', marginTop: '12px', fontSize: '15px' }}
+        >
+          Pay &amp; Complete Checkout
+        </button>
+      </div>
+    </>
+  );
+
   const posTerminal = (
     <div style={{
       display: 'grid',
@@ -534,8 +694,8 @@ export const PosPage: React.FC = () => {
         </div>
       </div>
 
-      {/* COLUMN 2: CHECKOUT CART PANEL */}
-      <div style={{
+      {/* COLUMN 2: CHECKOUT CART PANEL — Desktop only */}
+      <div className="pos-cart-desktop" style={{
         backgroundColor: 'var(--bg-card)',
         borderRadius: 'var(--radius-lg)',
         border: '1px solid var(--border)',
@@ -545,144 +705,7 @@ export const PosPage: React.FC = () => {
         height: '100%',
         overflow: 'hidden',
       }}>
-        {/* Cart Header */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Current Checkout Cart</h3>
-          <span className="badge badge-info" style={{ borderRadius: '12px' }}>
-            {cart.reduce((sum, item) => sum + item.quantity, 0)} Items
-          </span>
-        </div>
-
-        {/* Customer Selector drop down */}
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-hover)' }}>
-          <div style={{ position: 'relative' }}>
-            <select
-              className="form-input"
-              style={{ paddingLeft: '32px', height: '36px', fontSize: '13px' }}
-              value={selectedCustomer ? selectedCustomer.id.toString() : ''}
-              onChange={(e) => {
-                const id = e.target.value;
-                if (!id) setSelectedCustomer(null);
-                else {
-                  const match = customers.find(c => c.id.toString() === id);
-                  if (match) setSelectedCustomer(match);
-                }
-              }}
-            >
-              <option value="">Walking Customer (Default)</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
-              ))}
-            </select>
-            <User size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-          </div>
-        </div>
-
-        {/* Cart Item rows list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-          {cart.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {cart.map((item) => (
-                <div key={item.product.id} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  paddingBottom: '12px',
-                  borderBottom: '1px solid var(--bg-hover)',
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <h5 style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.product.name}
-                    </h5>
-                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                      {formatCurrency(item.product.price)} each
-                    </span>
-                  </div>
-
-                  {/* Quantity Actions */}
-                  <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
-                    <button
-                      onClick={() => updateQuantity(item.product.id, -1)}
-                      style={{ padding: '4px 8px', backgroundColor: 'var(--bg-hover)' }}
-                    >
-                      <Minus size={12} />
-                    </button>
-                    <span style={{ padding: '0 8px', fontSize: '12px', fontWeight: 700, minWidth: '24px', textAlign: 'center' }}>
-                      {item.quantity}
-                    </span>
-                    <button
-                      onClick={() => updateQuantity(item.product.id, 1)}
-                      style={{ padding: '4px 8px', backgroundColor: 'var(--bg-hover)' }}
-                    >
-                      <Plus size={12} />
-                    </button>
-                  </div>
-
-                  {/* Delete Item */}
-                  <button
-                    onClick={() => removeFromCart(item.product.id)}
-                    style={{ color: 'var(--danger)', padding: '4px' }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-              <Receipt size={32} style={{ marginBottom: '10px', opacity: 0.5 }} />
-              <p style={{ fontSize: '13px', fontWeight: 600 }}>Checkout cart is empty</p>
-              <p style={{ fontSize: '11px' }}>Click items on the left to add them here</p>
-            </div>
-          )}
-        </div>
-
-        {/* Cart Totals & Payments Panel */}
-        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-hover)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {/* Subtotal */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Subtotal</span>
-            <span style={{ fontWeight: 600 }}>{formatCurrency(cartSubtotal)}</span>
-          </div>
-
-          {/* Discount input picker */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', fontSize: '13px' }}>
-            <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Percent size={12} /> Discount (%)
-            </span>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              className="form-input"
-              style={{ width: '70px', padding: '4px 8px', height: '28px', textAlign: 'right', fontSize: '12px' }}
-              value={discountPercent || ''}
-              onChange={(e) => setDiscountPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-            />
-          </div>
-
-          {/* Tax (8%) */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Tax (8.00%)</span>
-            <span style={{ fontWeight: 600 }}>{formatCurrency(cartTax)}</span>
-          </div>
-
-          {/* Total */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 800, marginTop: '8px', borderTop: '1px dashed var(--border)', paddingTop: '10px' }}>
-            <span>Total Payable</span>
-            <span style={{ color: 'var(--accent-text)' }}>{formatCurrency(cartTotal)}</span>
-          </div>
-
-          {/* Pay Button */}
-          <button
-            onClick={handleOpenPayment}
-            disabled={cart.length === 0}
-            className="btn btn-primary"
-            style={{ width: '100%', height: '46px', marginTop: '12px', fontSize: '15px' }}
-          >
-            Pay & Complete Checkout
-          </button>
-        </div>
+        {cartPanelContent}
       </div>
 
       {/* MODAL 1: CHOOSE PAYMENT METHOD SHEET */}
@@ -866,6 +889,50 @@ export const PosPage: React.FC = () => {
         </div>
       )}
     </div>
+  );
+
+  // Mobile cart drawer portal
+  const mobileCartDrawer = ReactDOM.createPortal(
+    <>
+      {/* Backdrop */}
+      <div
+        className={`pos-cart-backdrop${isCartDrawerOpen ? ' pos-cart-backdrop--open' : ''}`}
+        onClick={() => setIsCartDrawerOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* Drawer */}
+      <div
+        className={`pos-cart-drawer${isCartDrawerOpen ? ' pos-cart-drawer--open' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Shopping cart"
+      >
+        {/* Drag handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+          <div style={{ width: '40px', height: '4px', borderRadius: '2px', backgroundColor: 'var(--border)' }} />
+        </div>
+        {cartPanelContent}
+      </div>
+
+      {/* Floating Cart FAB — only on mobile/tablet */}
+      <button
+        className="pos-cart-fab"
+        onClick={() => setIsCartDrawerOpen(true)}
+        aria-label={`Open cart (${totalCartItems} items)`}
+      >
+        <ShoppingCart size={22} />
+        {totalCartItems > 0 && (
+          <span className="pos-cart-fab-badge">{totalCartItems}</span>
+        )}
+        {totalCartItems > 0 && (
+          <span style={{ fontSize: '12px', fontWeight: 700, marginLeft: '4px' }}>
+            {formatCurrency(cartTotal)}
+          </span>
+        )}
+      </button>
+    </>,
+    document.body
   );
 
 
@@ -1072,6 +1139,7 @@ export const PosPage: React.FC = () => {
   return (
     <>
       {posTerminal}
+      {mobileCartDrawer}
       {receiptPortal}
     </>
   );
