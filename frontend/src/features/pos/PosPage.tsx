@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 import { useToast } from '../../hooks/useToast';
@@ -219,29 +220,125 @@ export const PosPage: React.FC = () => {
     }
   };
 
-  // Print receipt with dynamic file title naming format
+  // Print receipt — opens a dedicated print window with correct filename as <title>
+  // This is 100% reliable for PDF filenames vs the document.title approach
   const handlePrint = () => {
     if (!latestOrderReceipt) return;
 
-    const originalTitle = document.title;
     const orderNum = latestOrderReceipt.order_number || 'SWP-000000';
-    const dateStr = new Date(latestOrderReceipt.created_at || new Date()).toISOString().split('T')[0];
+    const dateStr = new Date(latestOrderReceipt.created_at || new Date())
+      .toISOString()
+      .split('T')[0];
+    const rawCustomer = latestOrderReceipt.customer?.name || 'WalkIn';
+    const cleanCustomer = rawCustomer.trim().replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
+    const filename = `Receipt_${orderNum}_${cleanCustomer}_${dateStr}`;
 
-    // Clean up customer name for safety inside filename
-    const rawCustomerName = latestOrderReceipt.customer?.name || 'WalkingCustomer';
-    const cleanCustomerName = rawCustomerName.trim().replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
+    // Build items rows HTML
+    const itemsHtml = (latestOrderReceipt.items || []).map((item: any) => `
+      <tr>
+        <td>${item.product?.name || 'Item'}</td>
+        <td style="text-align:center">${item.quantity}</td>
+        <td style="text-align:right">$${parseFloat(item.total_price).toFixed(2)}</td>
+      </tr>
+    `).join('');
 
-    // Dynamic filename schema: Receipt_[OrderNumber]_[CustomerName]_[Date]
-    const dynamicTitle = `Receipt_${orderNum}_${cleanCustomerName}_${dateStr}`;
+    const discount = parseFloat(latestOrderReceipt.discount_amount || 0);
+    const payments = latestOrderReceipt.payments || [];
+    const payment = payments[0];
 
-    // Set document title dynamically
-    document.title = dynamicTitle;
+    const receiptHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>${filename}</title>
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      color: #000;
+      background: #fff;
+      width: 72mm;
+      margin: 0 auto;
+      padding: 6mm;
+    }
+    h2 { font-size: 14px; font-weight: bold; text-align: center; margin-bottom: 2px; }
+    p { margin: 2px 0; }
+    .center { text-align: center; }
+    .divider { border-top: 1px dashed #000; margin: 6px 0; }
+    .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .bold { font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+    thead tr { border-bottom: 1px dashed #000; }
+    th { padding-bottom: 4px; text-align: left; font-weight: bold; }
+    td { padding: 3px 0; vertical-align: top; }
+    .barcode { font-size: 16px; letter-spacing: 3px; text-align: center; margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <div class="center">
+    <h2>SwiftPOS Retail</h2>
+    <p>123 Commerce Avenue, Tech City</p>
+    <p>Tel: +1 (555) 100-2000</p>
+    <div class="divider"></div>
+    <p class="bold" style="letter-spacing:1px">*** CUSTOMER RECEIPT ***</p>
+    <div class="divider"></div>
+  </div>
 
-    // Trigger printing dialog
-    window.print();
+  <div class="row"><span><b>Receipt #:</b> ${latestOrderReceipt.order_number}</span><span><b>Date:</b> ${new Date(latestOrderReceipt.created_at).toLocaleDateString()}</span></div>
+  <div class="row"><span><b>Cashier:</b> ${latestOrderReceipt.user?.name || 'Cashier'}</span><span><b>Time:</b> ${new Date(latestOrderReceipt.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+  <div class="row"><span><b>Customer:</b> ${latestOrderReceipt.customer?.name || 'Walking Customer'}</span>${latestOrderReceipt.customer?.phone ? `<span><b>Ph:</b> ${latestOrderReceipt.customer.phone}</span>` : ''}</div>
 
-    // Restore original tab title
-    document.title = originalTitle;
+  <div class="divider"></div>
+
+  <table>
+    <thead><tr><th style="width:55%">Item</th><th style="width:15%;text-align:center">Qty</th><th style="width:30%;text-align:right">Total</th></tr></thead>
+    <tbody>${itemsHtml}</tbody>
+  </table>
+
+  <div class="divider"></div>
+
+  <div class="row"><span>Subtotal:</span><span>$${parseFloat(latestOrderReceipt.subtotal).toFixed(2)}</span></div>
+  ${discount > 0 ? `<div class="row"><span>Discount:</span><span>-$${discount.toFixed(2)}</span></div>` : ''}
+  <div class="row"><span>Tax (8.00%):</span><span>$${parseFloat(latestOrderReceipt.tax_amount).toFixed(2)}</span></div>
+  <div class="divider"></div>
+  <div class="row bold"><span>TOTAL DUE:</span><span>$${parseFloat(latestOrderReceipt.total).toFixed(2)}</span></div>
+
+  <div class="divider"></div>
+
+  ${payment ? `
+  <div class="row"><span>Payment:</span><span class="bold" style="text-transform:uppercase">${payment.method === 'mobile' ? 'Mobile Pay' : payment.method}</span></div>
+  ${payment.method === 'cash' ? `
+  <div class="row"><span>Tendered:</span><span>$${parseFloat(payment.tendered).toFixed(2)}</span></div>
+  <div class="row"><span>Change:</span><span>$${parseFloat(payment.change_amount).toFixed(2)}</span></div>
+  ` : ''}
+  <div class="divider"></div>
+  ` : ''}
+
+  <div class="center">
+    <div class="barcode">||| ||||| || ||||| |||</div>
+    <p>${latestOrderReceipt.order_number}</p>
+    <p class="bold" style="margin-top:6px">Thank you for shopping with us!</p>
+    <p>Powered by SwiftPOS</p>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>`;
+
+    const sw = window.screen.width  || 1280;
+    const sh = window.screen.height || 800;
+    const printWindow = window.open('', '_blank', `width=${sw},height=${sh},scrollbars=yes,left=0,top=0`);
+    if (printWindow) {
+      printWindow.document.write(receiptHtml);
+      printWindow.document.close();
+    }
   };
 
   if (isLoading) {
@@ -253,7 +350,7 @@ export const PosPage: React.FC = () => {
     );
   }
 
-  return (
+  const posTerminal = (
     <div style={{
       display: 'grid',
       gridTemplateColumns: '1fr 380px',
@@ -768,175 +865,187 @@ export const PosPage: React.FC = () => {
           </div>
         </div>
       )}
+    </div>
+  );
 
-      {/* MODAL 2: PRINTABLE ORDER RECEIPT INVOICE */}
-      {isReceiptModalOpen && latestOrderReceipt && (
-        <div 
-          className="receipt-modal-overlay"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(15, 23, 42, 0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '16px',
-            backdropFilter: 'blur(4px)',
-          }}
-        >
-          <div 
-            className="animate-fade-in receipt-modal-container" 
+
+
+  // Render receipt modal via portal so it sits at document.body,
+  // completely escaping the AppLayout grid/flex hierarchy for clean printing.
+  const receiptPortal =
+    isReceiptModalOpen && latestOrderReceipt
+      ? ReactDOM.createPortal(
+          <div
+            className="receipt-modal-overlay"
             style={{
-              backgroundColor: 'var(--bg-card)',
-              borderRadius: 'var(--radius-lg)',
-              maxWidth: '380px',
+              position: 'fixed',
+              top: 0,
+              left: 0,
               width: '100%',
-              boxShadow: 'var(--shadow-xl)',
-              border: '1px solid var(--border)',
+              height: '100%',
+              backgroundColor: 'rgba(15, 23, 42, 0.4)',
               display: 'flex',
-              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2000,
+              padding: '16px',
+              backdropFilter: 'blur(4px)',
+              overflowY: 'auto',
             }}
           >
-            {/* Printable Receipt Layout */}
-            <div style={{ padding: '24px', fontSize: '12px', fontFamily: 'monospace', color: '#000000', backgroundColor: '#ffffff', borderRadius: '8px' }} className="printable-receipt">
-              {/* Header */}
-              <div style={{ textAlign: 'center', marginBottom: '12px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 4px 0', color: '#000000' }}>SwiftPOS Retail</h2>
-                <p style={{ margin: '2px 0' }}>123 Commerce Avenue, Tech City</p>
-                <p style={{ margin: '2px 0' }}>Tel: +1 (555) 100-2000</p>
-                <div className="receipt-divider"></div>
-                <p style={{ fontWeight: 'bold', margin: '4px 0', letterSpacing: '1px' }}>*** CUSTOMER RECEIPT ***</p>
-                <div className="receipt-divider"></div>
-              </div>
-
-              {/* Metadata */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div className="receipt-row">
-                  <span><strong>Receipt #:</strong> {latestOrderReceipt.order_number}</span>
-                  <span><strong>Date:</strong> {new Date(latestOrderReceipt.created_at).toLocaleDateString()}</span>
-                </div>
-                <div className="receipt-row">
-                  <span><strong>Cashier:</strong> {latestOrderReceipt.user?.name || 'Cashier'}</span>
-                  <span><strong>Time:</strong> {new Date(latestOrderReceipt.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-                <div className="receipt-row">
-                  <span><strong>Customer:</strong> {latestOrderReceipt.customer?.name || 'Walking Customer'}</span>
-                  {latestOrderReceipt.customer?.phone && (
-                    <span><strong>Phone:</strong> {latestOrderReceipt.customer.phone}</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="receipt-divider"></div>
-
-              {/* Items List */}
-              <table className="receipt-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '55%' }}>Item</th>
-                    <th style={{ width: '15%', textAlign: 'center' }}>Qty</th>
-                    <th style={{ width: '30%', textAlign: 'right' }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {latestOrderReceipt.items?.map((item: any, idx: number) => (
-                    <tr key={idx}>
-                      <td style={{ verticalAlign: 'top' }}>{item.product?.name || 'Item'}</td>
-                      <td style={{ textAlign: 'center', verticalAlign: 'top' }}>{item.quantity}</td>
-                      <td style={{ textAlign: 'right', verticalAlign: 'top' }}>{formatCurrency(item.total_price)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <div className="receipt-divider"></div>
-
-              {/* Calculations */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                <div className="receipt-row">
-                  <span>Subtotal:</span>
-                  <span>{formatCurrency(latestOrderReceipt.subtotal)}</span>
-                </div>
-                {parseFloat(latestOrderReceipt.discount_amount) > 0 && (
-                  <div className="receipt-row">
-                    <span>Discount:</span>
-                    <span>-{formatCurrency(latestOrderReceipt.discount_amount)}</span>
-                  </div>
-                )}
-                <div className="receipt-row">
-                  <span>Tax (8.00%):</span>
-                  <span>{formatCurrency(latestOrderReceipt.tax_amount)}</span>
-                </div>
-                <div className="receipt-divider"></div>
-                <div className="receipt-row bold" style={{ fontSize: '13px' }}>
-                  <span>TOTAL DUE:</span>
-                  <span>{formatCurrency(latestOrderReceipt.total)}</span>
-                </div>
-              </div>
-
-              <div className="receipt-divider"></div>
-
-              {/* Payment Details */}
-              {latestOrderReceipt.payments && latestOrderReceipt.payments.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', margin: '4px 0' }}>
-                  <div className="receipt-row">
-                    <span>Payment Method:</span>
-                    <span style={{ textTransform: 'uppercase' }}>
-                      {latestOrderReceipt.payments[0].method === 'mobile' ? 'Mobile Pay' : latestOrderReceipt.payments[0].method}
-                    </span>
-                  </div>
-                  {latestOrderReceipt.payments[0].method === 'cash' && (
-                    <>
-                      <div className="receipt-row">
-                        <span>Amount Tendered:</span>
-                        <span>{formatCurrency(latestOrderReceipt.payments[0].tendered)}</span>
-                      </div>
-                      <div className="receipt-row">
-                        <span>Cash Change:</span>
-                        <span>{formatCurrency(latestOrderReceipt.payments[0].change_amount)}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              <div className="receipt-divider"></div>
-
-              {/* simulated barcode / footer */}
-              <div style={{ textAlign: 'center', marginTop: '12px' }}>
-                <div style={{ 
-                  fontFamily: 'monospace', 
-                  fontSize: '18px', 
-                  letterSpacing: '3px', 
-                  margin: '8px 0', 
-                  fontWeight: 300,
-                  color: '#000000'
-                }}>
-                  |||||  |||||  ||  |||||  |||
-                </div>
-                <p style={{ fontSize: '10px', color: '#000000', margin: '4px 0' }}>Order ID: {latestOrderReceipt.order_number}</p>
-                <p style={{ marginTop: '8px', fontWeight: 'bold' }}>Thank you for shopping with us!</p>
-                <p style={{ fontSize: '10px', color: '#000000' }}>Powering Retail with SwiftPOS</p>
-              </div>
-            </div>
-
-            {/* Receipt Modal Footer Actions */}
-            <div 
-              className="receipt-modal-actions"
-              style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '10px', 
-                padding: '16px 20px', 
-                borderTop: '1px solid var(--border)',
-                backgroundColor: 'var(--bg-hover)' 
+            <div
+              className="animate-fade-in receipt-modal-container"
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                borderRadius: 'var(--radius-lg)',
+                maxWidth: '400px',
+                width: '100%',
+                boxShadow: 'var(--shadow-xl)',
+                border: '1px solid var(--border)',
+                display: 'flex',
+                flexDirection: 'column',
+                maxHeight: '90vh',
+                overflowY: 'auto',
               }}
             >
-              <div style={{ display: 'flex', gap: '10px' }}>
+              {/* Printable Receipt Layout */}
+              <div
+                className="printable-receipt"
+                style={{
+                  padding: '20px',
+                  fontSize: '12px',
+                  fontFamily: "'Courier New', Courier, monospace",
+                  color: '#000000',
+                  backgroundColor: '#ffffff',
+                  borderRadius: '8px 8px 0 0',
+                }}
+              >
+                {/* Header */}
+                <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                  <h2 style={{ fontSize: '16px', fontWeight: 800, margin: '0 0 4px 0', color: '#000000', fontFamily: "'Courier New', Courier, monospace" }}>SwiftPOS Retail</h2>
+                  <p style={{ margin: '2px 0', color: '#000000' }}>123 Commerce Avenue, Tech City</p>
+                  <p style={{ margin: '2px 0', color: '#000000' }}>Tel: +1 (555) 100-2000</p>
+                  <div className="receipt-divider" />
+                  <p style={{ fontWeight: 'bold', margin: '4px 0', letterSpacing: '1px', color: '#000000' }}>*** CUSTOMER RECEIPT ***</p>
+                  <div className="receipt-divider" />
+                </div>
+
+                {/* Metadata */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div className="receipt-row">
+                    <span><strong>Receipt #:</strong> {latestOrderReceipt.order_number}</span>
+                    <span><strong>Date:</strong> {new Date(latestOrderReceipt.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <div className="receipt-row">
+                    <span><strong>Cashier:</strong> {latestOrderReceipt.user?.name || 'Cashier'}</span>
+                    <span><strong>Time:</strong> {new Date(latestOrderReceipt.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                  <div className="receipt-row">
+                    <span><strong>Customer:</strong> {latestOrderReceipt.customer?.name || 'Walking Customer'}</span>
+                    {latestOrderReceipt.customer?.phone && (
+                      <span><strong>Ph:</strong> {latestOrderReceipt.customer.phone}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="receipt-divider" />
+
+                {/* Items Table */}
+                <table className="receipt-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '55%' }}>Item</th>
+                      <th style={{ width: '15%', textAlign: 'center' }}>Qty</th>
+                      <th style={{ width: '30%', textAlign: 'right' }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {latestOrderReceipt.items?.map((item: any, idx: number) => (
+                      <tr key={idx}>
+                        <td>{item.product?.name || 'Item'}</td>
+                        <td style={{ textAlign: 'center' }}>{item.quantity}</td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(item.total_price)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="receipt-divider" />
+
+                {/* Totals */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '4px' }}>
+                  <div className="receipt-row">
+                    <span>Subtotal:</span>
+                    <span>{formatCurrency(latestOrderReceipt.subtotal)}</span>
+                  </div>
+                  {parseFloat(latestOrderReceipt.discount_amount) > 0 && (
+                    <div className="receipt-row">
+                      <span>Discount:</span>
+                      <span>-{formatCurrency(latestOrderReceipt.discount_amount)}</span>
+                    </div>
+                  )}
+                  <div className="receipt-row">
+                    <span>Tax (8.00%):</span>
+                    <span>{formatCurrency(latestOrderReceipt.tax_amount)}</span>
+                  </div>
+                  <div className="receipt-divider" />
+                  <div className="receipt-row bold" style={{ fontSize: '13px' }}>
+                    <span>TOTAL DUE:</span>
+                    <span>{formatCurrency(latestOrderReceipt.total)}</span>
+                  </div>
+                </div>
+
+                <div className="receipt-divider" />
+
+                {/* Payment Details */}
+                {latestOrderReceipt.payments && latestOrderReceipt.payments.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', margin: '4px 0' }}>
+                    <div className="receipt-row">
+                      <span>Payment:</span>
+                      <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>
+                        {latestOrderReceipt.payments[0].method === 'mobile' ? 'Mobile Pay' : latestOrderReceipt.payments[0].method}
+                      </span>
+                    </div>
+                    {latestOrderReceipt.payments[0].method === 'cash' && (
+                      <>
+                        <div className="receipt-row">
+                          <span>Tendered:</span>
+                          <span>{formatCurrency(latestOrderReceipt.payments[0].tendered)}</span>
+                        </div>
+                        <div className="receipt-row">
+                          <span>Change:</span>
+                          <span>{formatCurrency(latestOrderReceipt.payments[0].change_amount)}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="receipt-divider" />
+
+                {/* Footer */}
+                <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                  <div style={{ fontFamily: 'monospace', fontSize: '14px', letterSpacing: '3px', margin: '6px 0', color: '#000000' }}>
+                    ||| ||||| || ||||| |||
+                  </div>
+                  <p style={{ fontSize: '10px', color: '#000000', margin: '3px 0' }}>Order: {latestOrderReceipt.order_number}</p>
+                  <p style={{ fontWeight: 'bold', margin: '6px 0', color: '#000000' }}>Thank you for shopping with us!</p>
+                  <p style={{ fontSize: '10px', color: '#000000' }}>Powered by SwiftPOS</p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div
+                className="receipt-modal-actions"
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  padding: '14px 20px',
+                  borderTop: '1px solid var(--border)',
+                  backgroundColor: 'var(--bg-hover)',
+                  borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
+                }}
+              >
                 <button
                   type="button"
                   onClick={handlePrint}
@@ -955,9 +1064,15 @@ export const PosPage: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+          </div>,
+          document.body
+        )
+      : null;
+
+  return (
+    <>
+      {posTerminal}
+      {receiptPortal}
+    </>
   );
 };

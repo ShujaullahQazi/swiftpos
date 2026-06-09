@@ -311,112 +311,201 @@ a {
   }
 }
 
-/* Print Styles for thermal receipt printing */
+/* Screen-only helper classes for receipt layout */
+.receipt-divider {
+  border-top: 1px dashed #000000;
+  margin: 8px 0;
+  height: 0;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.receipt-row.bold {
+  font-weight: bold;
+}
+
+.receipt-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+
+.receipt-table th {
+  border-bottom: 1px dashed #000000;
+  padding-bottom: 4px;
+  font-weight: bold;
+  text-align: left;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.receipt-table td {
+  padding: 4px 0;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+
+/* ============================================
+   PRINT STYLES — Thermal Receipt
+   ============================================ */
 @media print {
-  /* Hide standard page layout and UI buttons */
-  aside, header, nav, .mobile-nav-bar, .pos-terminal-layout, button, select, input, .receipt-modal-actions, .toast, [role="status"] {
+
+  /* ── NUCLEAR APPROACH ─────────────────────────────────────────
+     Hide EVERY direct child of body, then selectively un-hide
+     only the receipt portal overlay and its contents.
+     This eliminates: blank first page (the #root app content)
+     and toast notifications appearing on the print output.
+  ─────────────────────────────────────────────────────────────── */
+
+  /* Step 1: Hide everything at document root level */
+  body > * {
     display: none !important;
+    visibility: hidden !important;
   }
 
-  /* Reset body & root layouts for clean print content */
-  body, #root, div[style*="display: flex"] {
-    background: none !important;
-    background-color: #ffffff !important;
-    height: auto !important;
-    min-height: 0 !important;
+  /* Step 2: Show ONLY the receipt modal portal (direct child of body) */
+  body > .receipt-modal-overlay {
     display: block !important;
-    box-shadow: none !important;
-    border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  main.page-content {
-    margin: 0 !important;
-    padding: 0 !important;
-    display: block !important;
-    width: 100% !important;
-    min-height: 0 !important;
-  }
-
-  /* Reset modal overlays for direct document print */
-  .receipt-modal-overlay {
+    visibility: visible !important;
     position: static !important;
-    background: none !important;
-    background-color: transparent !important;
+    background: transparent !important;
     backdrop-filter: none !important;
     padding: 0 !important;
     margin: 0 !important;
-    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
-  .receipt-modal-container {
-    max-width: 100% !important;
-    width: 100% !important;
-    box-shadow: none !important;
-    border: none !important;
-    background: transparent !important;
+  /* Step 3: Make all descendants of the receipt overlay visible */
+  body > .receipt-modal-overlay * {
+    visibility: visible !important;
+  }
+
+  /* Step 4: Reset body/html for clean print surface */
+  html, body {
+    background: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
-  /* Printable receipt typography & paper sizing */
+  /* ── RECEIPT MODAL CONTAINER ──────────────────────────────── */
+  .receipt-modal-container {
+    display: block !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Hide the action buttons inside the receipt modal */
+  .receipt-modal-actions {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* ── PRINTABLE RECEIPT — thermal paper sizing ─────────────── */
   .printable-receipt {
-    width: 76mm !important; /* standard thermal receipt size */
+    display: block !important;
+    width: 72mm !important;
     margin: 0 auto !important;
-    padding: 6mm !important;
+    padding: 4mm 6mm !important;
     background-color: #ffffff !important;
     color: #000000 !important;
     font-family: 'Courier New', Courier, monospace !important;
-    font-size: 11px !important;
-    line-height: 1.4 !important;
+    font-size: 10.5px !important;
+    line-height: 1.45 !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
+  }
+
+  /* Force all text to be black */
+  .printable-receipt,
+  .printable-receipt * {
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    visibility: visible !important;
   }
 
   .printable-receipt h2 {
-    color: #000000 !important;
     font-family: 'Courier New', Courier, monospace !important;
+    font-size: 13px !important;
+    font-weight: bold !important;
   }
 
-  /* Helper print layout classes */
+  .printable-receipt p {
+    color: #000000 !important;
+  }
+
+  /* ── RECEIPT HELPER CLASSES ───────────────────────────────── */
   .receipt-divider {
+    display: block !important;
+    border: none !important;
     border-top: 1px dashed #000000 !important;
-    margin: 8px 0 !important;
+    margin: 6px 0 !important;
     height: 0 !important;
+    background: transparent !important;
   }
 
   .receipt-row {
     display: flex !important;
     justify-content: space-between !important;
-    margin-bottom: 4px !important;
+    align-items: baseline !important;
+    margin-bottom: 3px !important;
+    width: 100% !important;
   }
 
   .receipt-row.bold {
     font-weight: bold !important;
   }
 
+  /* ── ITEMS TABLE ──────────────────────────────────────────── */
   .receipt-table {
+    display: table !important;
     width: 100% !important;
     border-collapse: collapse !important;
-    margin: 8px 0 !important;
+    margin: 6px 0 !important;
   }
 
+  .receipt-table thead { display: table-header-group !important; }
+  .receipt-table tbody { display: table-row-group !important; }
+  .receipt-table tr   { display: table-row !important; }
+
   .receipt-table th {
+    display: table-cell !important;
     border-bottom: 1px dashed #000000 !important;
-    padding-bottom: 4px !important;
+    padding: 2px 0 4px !important;
     font-weight: bold !important;
     text-align: left !important;
     font-family: 'Courier New', Courier, monospace !important;
+    color: #000000 !important;
   }
 
   .receipt-table td {
-    padding: 4px 0 !important;
+    display: table-cell !important;
+    padding: 3px 0 !important;
     font-family: 'Courier New', Courier, monospace !important;
+    color: #000000 !important;
+    vertical-align: top !important;
   }
 
-  /* Remove default browser print margin markers (page count, headers) */
+  /* ── PAGE SETTINGS — thermal paper, no browser UI ────────── */
   @page {
-    size: auto;
-    margin: 0mm;
+    size: 80mm auto;
+    margin: 0;
   }
 }
 

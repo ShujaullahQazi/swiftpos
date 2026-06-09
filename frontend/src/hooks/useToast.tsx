@@ -46,18 +46,20 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       {children}
       
       {/* Toast Overlay Container */}
-      <div style={{
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        zIndex: 9999,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        maxWidth: '400px',
-        width: 'calc(100% - 40px)',
-        pointerEvents: 'none',
-      }}>
+      <div
+        className="toast-container"
+        style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          maxWidth: '400px',
+          width: 'calc(100% - 40px)',
+          pointerEvents: 'none',
+        }}>
         {toasts.map((toast) => {
           const styles = getToastStyles(toast.type);
           const Icon = getToastIcon(toast.type);

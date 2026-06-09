@@ -27,28 +27,11 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuToggle }) => {
       zIndex: 90,
       boxShadow: 'var(--shadow-sm)',
     }}>
-      {/* Left: Mobile Menu Toggle & Brand (Visible on mobile only) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <button
-          onClick={onMenuToggle}
-          style={{
-            padding: '8px',
-            borderRadius: '8px',
-            backgroundColor: 'var(--bg-hover)',
-            display: 'none', // Shown in CSS media queries on small screens
-          }}
-          className="mobile-menu-btn"
-        >
-          <Menu size={20} />
-        </button>
-        
         <div>
           <h2 style={{ fontSize: '18px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-            SwiftPOS Dashboard
+            SwiftPOS
           </h2>
-          <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            General Retail Terminal
-          </p>
         </div>
       </div>
 

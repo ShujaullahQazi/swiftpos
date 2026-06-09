@@ -134,7 +134,7 @@ class OrderController extends Controller
             DB::commit();
 
             // Load relations and return
-            $order->load(['customer', 'items.product', 'payments']);
+            $order->load(['customer', 'user', 'items.product', 'payments']);
 
             return response()->json([
                 'message' => 'Order created successfully',
