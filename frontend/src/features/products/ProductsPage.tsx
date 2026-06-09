@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 import { useToast } from '../../hooks/useToast';
@@ -23,25 +24,36 @@ interface Product {
 }
 
 export const ProductsPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const queryClient = useQueryClient();
+
+  // ─── Filter & pagination state ───
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Pagination
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
 
-  // Loading States
-  const [isLoading, setIsLoading] = useState(true);
+  // ─── Server state via TanStack Query ───
+  const productsUrl = `/products?page=${page}&search=${searchQuery}${selectedCategory !== 'all' ? `&category_id=${selectedCategory}` : ''}`;
+
+  const { data: productsRes, isLoading: productsLoading } = useQuery({
+    queryKey: ['products', page, searchQuery, selectedCategory],
+    queryFn: async () => { const r = await api.get(productsUrl); return r.data; },
+    placeholderData: (prev: any) => prev, // keep old data visible while fetching new page
+  });
+
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ['pos-categories'],          // shared with PosPage — already cached!
+    queryFn: async () => { const r = await api.get('/categories'); return r.data; },
+  });
+
+  const products: Product[]  = productsRes?.data       ?? [];
+  const totalPages: number   = productsRes?.last_page   ?? 1;
+  const totalItems: number   = productsRes?.total       ?? 0;
+  const isLoading = productsLoading;
+
+  // ─── Local UI state ───
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-
-  // Form Fields
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [price, setPrice] = useState('');
@@ -54,40 +66,7 @@ export const ProductsPage: React.FC = () => {
 
   const toast = useToast();
 
-  const fetchProducts = async () => {
-    setIsLoading(true);
-    try {
-      let url = `/products?page=${page}&search=${searchQuery}`;
-      if (selectedCategory !== 'all') {
-        url += `&category_id=${selectedCategory}`;
-      }
-      const res = await api.get(url);
-      setProducts(res.data.data);
-      setTotalPages(res.data.last_page);
-      setTotalItems(res.data.total);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to fetch products');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const res = await api.get('/categories');
-      setCategories(res.data);
-    } catch (err: any) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [page, selectedCategory, searchQuery]);
+  const invalidateProducts = () => queryClient.invalidateQueries({ queryKey: ['products'] });
 
   const openAddModal = () => {
     setEditingProduct(null);
@@ -142,7 +121,9 @@ export const ProductsPage: React.FC = () => {
         toast.success('Product created successfully!');
       }
       setIsModalOpen(false);
-      fetchProducts();
+      invalidateProducts();
+      // Also refresh the POS products cache so stock counts sync
+      queryClient.invalidateQueries({ queryKey: ['pos-products'] });
     } catch (err: any) {
       if (err.errors) {
         setFormErrors(err.errors);
@@ -162,7 +143,8 @@ export const ProductsPage: React.FC = () => {
     try {
       await api.delete(`/products/${id}`);
       toast.success('Product deleted successfully');
-      fetchProducts();
+      invalidateProducts();
+      queryClient.invalidateQueries({ queryKey: ['pos-products'] });
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete product');
     }

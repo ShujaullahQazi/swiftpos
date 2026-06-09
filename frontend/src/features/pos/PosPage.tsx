@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import ReactDOM from 'react-dom';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
@@ -32,10 +33,116 @@ interface Customer {
   phone: string | null;
 }
 
+// ─── Memoized product card — only re-renders when its own data/qty changes ───
+interface ProductCardProps {
+  product: Product;
+  inCartQty: number;
+  onAdd: (product: Product) => void;
+}
+
+const ProductCard = memo(({ product, inCartQty, onAdd }: ProductCardProps) => {
+  const isOutOfStock = product.stock_quantity <= 0;
+
+  return (
+    <div
+      onClick={() => !isOutOfStock && onAdd(product)}
+      style={{
+        backgroundColor: 'var(--bg-card)',
+        borderRadius: 'var(--radius-md)',
+        border: isOutOfStock
+          ? '1px dashed var(--border)'
+          : inCartQty > 0
+          ? '2px solid var(--accent)'
+          : '1px solid var(--border)',
+        padding: '14px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+        opacity: isOutOfStock ? 0.55 : 1,
+        boxShadow: 'var(--shadow-sm)',
+        position: 'relative',
+        transition: 'transform 0.15s ease',
+      }}
+      className="pos-product-card"
+      onMouseEnter={(e) => { if (!isOutOfStock) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+      onMouseLeave={(e) => { if (!isOutOfStock) e.currentTarget.style.transform = 'translateY(0)'; }}
+    >
+      {inCartQty > 0 && (
+        <div style={{
+          position: 'absolute',
+          top: '-8px',
+          right: '-8px',
+          backgroundColor: 'var(--accent)',
+          color: 'white',
+          width: '22px',
+          height: '22px',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '11px',
+          fontWeight: 700,
+          boxShadow: 'var(--shadow-md)',
+        }}>
+          {inCartQty}
+        </div>
+      )}
+
+      <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+        {product.sku}
+      </span>
+
+      <h4 style={{
+        fontSize: '13px',
+        fontWeight: 600,
+        color: 'var(--text-primary)',
+        lineHeight: 1.3,
+        flex: 1,
+        overflow: 'hidden',
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical',
+      }}>
+        {product.name}
+      </h4>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '6px' }}>
+        <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)' }}>
+          {formatCurrency(product.price)}
+        </span>
+        <span style={{
+          fontSize: '11px',
+          fontWeight: 600,
+          color: isOutOfStock ? 'var(--danger)' : (product.stock_quantity <= 10 ? 'var(--warning-text)' : 'var(--text-secondary)'),
+        }}>
+          {isOutOfStock ? 'Sold Out' : `${product.stock_quantity} left`}
+        </span>
+      </div>
+    </div>
+  );
+});
+
 export const PosPage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  // ─── Server state via TanStack Query (cached, instant on re-visit) ───────────
+  const queryClient = useQueryClient();
+
+  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
+    queryKey: ['pos-products'],
+    queryFn: async () => { const r = await api.get('/products?all=1'); return r.data; },
+  });
+
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery<Category[]>({
+    queryKey: ['pos-categories'],
+    queryFn: async () => { const r = await api.get('/categories'); return r.data; },
+  });
+
+  const { data: customers = [], isLoading: customersLoading } = useQuery<Customer[]>({
+    queryKey: ['pos-customers'],
+    queryFn: async () => { const r = await api.get('/customers?all=1'); return r.data; },
+  });
+
+  const isLoading = productsLoading || categoriesLoading || customersLoading;
   
   // Selection/Filters
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -47,8 +154,7 @@ export const PosPage: React.FC = () => {
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
 
-  // Loading States
-  const [isLoading, setIsLoading] = useState(true);
+  // Loading States (isLoading is derived from useQuery hooks above)
   const [isCheckoutSubmitting, setIsCheckoutSubmitting] = useState(false);
 
   // Modals
@@ -65,68 +171,56 @@ export const PosPage: React.FC = () => {
 
   const toast = useToast();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // Debounce timer ref — avoids creating a new timer object every render
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The debounced value that actually drives the filter (lags input by 200ms)
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Load Initial POS Data
+  // Sync debounced search whenever the raw query changes
   useEffect(() => {
-    const fetchPosData = async () => {
-      try {
-        const [prodRes, catRes, custRes] = await Promise.all([
-          api.get('/products?all=1'),
-          api.get('/categories'),
-          api.get('/customers?all=1'),
-        ]);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(searchQuery), 200);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchQuery]);
 
-        setProducts(prodRes.data);
-        setCategories(catRes.data);
-        setCustomers(custRes.data);
-      } catch (err: any) {
-        toast.error(err.message || 'Failed to load POS terminal data.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPosData();
-  }, [toast]);
-
-  // Calculate pricing values
-  const cartSubtotal = cart.reduce((sum, item) => sum + (parseFloat(item.product.price as string) * item.quantity), 0);
-  const calculatedDiscount = discountPercent > 0 ? (cartSubtotal * (discountPercent / 100)) : discountAmount;
+  // ─── Memoized computed pricing — only recalculates when cart/discount changes ───
+  const cartSubtotal = useMemo(
+    () => cart.reduce((sum, item) => sum + (parseFloat(item.product.price as string) * item.quantity), 0),
+    [cart]
+  );
+  const calculatedDiscount = useMemo(
+    () => discountPercent > 0 ? (cartSubtotal * (discountPercent / 100)) : discountAmount,
+    [discountPercent, discountAmount, cartSubtotal]
+  );
   const taxRate = 0.08; // 8%
-  const taxableAmount = Math.max(0, cartSubtotal - calculatedDiscount);
-  const cartTax = taxableAmount * taxRate;
-  const cartTotal = taxableAmount + cartTax;
+  const taxableAmount = useMemo(() => Math.max(0, cartSubtotal - calculatedDiscount), [cartSubtotal, calculatedDiscount]);
+  const cartTax = useMemo(() => taxableAmount * taxRate, [taxableAmount]);
+  const cartTotal = useMemo(() => taxableAmount + cartTax, [taxableAmount, cartTax]);
 
-  // Add Product to Cart
-  const addToCart = (product: Product) => {
+  // ─── Memoized handlers — stable references so ProductCard never re-renders due to callbacks ───
+  const addToCart = useCallback((product: Product) => {
     if (product.stock_quantity <= 0) {
       toast.warning(`Product '${product.name}' is out of stock!`);
       return;
     }
-
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.product.id === product.id);
-
       if (existingItem) {
         if (existingItem.quantity >= product.stock_quantity) {
           toast.warning(`Cannot exceed available stock level (${product.stock_quantity}).`);
           return prevCart;
         }
         return prevCart.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
+          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
-      } else {
-        return [...prevCart, { product, quantity: 1 }];
       }
+      return [...prevCart, { product, quantity: 1 }];
     });
-  };
+  }, [toast]);
 
-  // Adjust Quantity in Cart
-  const updateQuantity = (productId: number, delta: number) => {
-    setCart((prevCart) => {
-      return prevCart.map((item) => {
+  const updateQuantity = useCallback((productId: number, delta: number) => {
+    setCart((prevCart) =>
+      prevCart.map((item) => {
         if (item.product.id === productId) {
           const newQty = item.quantity + delta;
           if (newQty <= 0) return null;
@@ -137,38 +231,38 @@ export const PosPage: React.FC = () => {
           return { ...item, quantity: newQty };
         }
         return item;
-      }).filter(Boolean) as CartItem[];
-    });
-  };
+      }).filter(Boolean) as CartItem[]
+    );
+  }, [toast]);
 
-  // Remove item entirely from Cart
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = useCallback((productId: number) => {
     setCart((prevCart) => prevCart.filter((item) => item.product.id !== productId));
-  };
+  }, []);
 
-  // Handle Category select filter
-  const filteredProducts = products.filter((prod) => {
-    const matchesCategory = selectedCategory === 'all' || prod.category_id.toString() === selectedCategory;
-    const matchesSearch = searchQuery === '' ||
-      prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prod.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (prod.barcode && prod.barcode.includes(searchQuery));
-    return matchesCategory && matchesSearch;
-  });
+  // ─── Memoized filter — only recalculates when products/category/debounced search changes ───
+  const filteredProducts = useMemo(() => {
+    const q = debouncedSearch.toLowerCase();
+    return products.filter((prod) => {
+      const matchesCategory = selectedCategory === 'all' || prod.category_id.toString() === selectedCategory;
+      const matchesSearch = q === '' ||
+        prod.name.toLowerCase().includes(q) ||
+        prod.sku.toLowerCase().includes(q) ||
+        (prod.barcode && prod.barcode.includes(q));
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, selectedCategory, debouncedSearch]);
 
-  // Open checkout payment sheet
-  const handleOpenPayment = () => {
-    if (cart.length === 0) {
-      toast.warning('Cart is empty.');
-      return;
-    }
+  const handleOpenPayment = useCallback(() => {
+    if (cart.length === 0) { toast.warning('Cart is empty.'); return; }
     setTenderedAmount(cartTotal.toFixed(2));
     setPaymentMethod('cash');
     setIsPaymentModalOpen(true);
-  };
+  }, [cart.length, cartTotal, toast]);
 
-  // Auto-calculated Cash change amount
-  const calculatedChange = Math.max(0, parseFloat(tenderedAmount || '0') - cartTotal);
+  const calculatedChange = useMemo(
+    () => Math.max(0, parseFloat(tenderedAmount || '0') - cartTotal),
+    [tenderedAmount, cartTotal]
+  );
 
   // Complete Order & Post to Laravel
   const handleCompletePayment = async () => {
@@ -194,17 +288,10 @@ export const PosPage: React.FC = () => {
 
       const res = await api.post('/orders', orderPayload);
       setLatestOrderReceipt(res.data.order);
-      
-      // Update inventory levels in-memory
-      setProducts((prevProds) => {
-        return prevProds.map((prod) => {
-          const cartItem = cart.find((item) => item.product.id === prod.id);
-          if (cartItem) {
-            return { ...prod, stock_quantity: prod.stock_quantity - cartItem.quantity };
-          }
-          return prod;
-        });
-      });
+
+      // Invalidate the products cache — next render will get fresh stock levels
+      // (instant from cache, silently revalidates in the background)
+      queryClient.invalidateQueries({ queryKey: ['pos-products'] });
 
       // Clear checkout/cart state
       setCart([]);
@@ -607,90 +694,14 @@ export const PosPage: React.FC = () => {
           alignContent: 'start',
           padding: '2px',
         }} className="pos-products-grid">
-          {filteredProducts.map((prod) => {
-            const isOutOfStock = prod.stock_quantity <= 0;
-            const inCartQty = cart.find(item => item.product.id === prod.id)?.quantity || 0;
-
-            return (
-              <div
-                key={prod.id}
-                onClick={() => !isOutOfStock && addToCart(prod)}
-                style={{
-                  backgroundColor: 'var(--bg-card)',
-                  borderRadius: 'var(--radius-md)',
-                  border: isOutOfStock ? '1px dashed var(--border)' : (inCartQty > 0 ? '2px solid var(--accent)' : '1px solid var(--border)'),
-                  padding: '14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  cursor: isOutOfStock ? 'not-allowed' : 'pointer',
-                  opacity: isOutOfStock ? 0.55 : 1,
-                  boxShadow: 'var(--shadow-sm)',
-                  position: 'relative',
-                  transition: 'transform 0.15s ease',
-                }}
-                className="pos-product-card"
-                onMouseEnter={(e) => { if(!isOutOfStock) e.currentTarget.style.transform = 'translateY(-2px)' }}
-                onMouseLeave={(e) => { if(!isOutOfStock) e.currentTarget.style.transform = 'translateY(0)' }}
-              >
-                {/* Cart Badge counter */}
-                {inCartQty > 0 && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '-8px',
-                    right: '-8px',
-                    backgroundColor: 'var(--accent)',
-                    color: 'white',
-                    width: '22px',
-                    height: '22px',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    boxShadow: 'var(--shadow-md)',
-                  }}>
-                    {inCartQty}
-                  </div>
-                )}
-
-                {/* SKU */}
-                <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
-                  {prod.sku}
-                </span>
-
-                {/* Name */}
-                <h4 style={{
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  lineHeight: 1.3,
-                  flex: 1,
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                }}>
-                  {prod.name}
-                </h4>
-
-                {/* Price & Stock info */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '6px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                    {formatCurrency(prod.price)}
-                  </span>
-                  <span style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    color: isOutOfStock ? 'var(--danger)' : (prod.stock_quantity <= 10 ? 'var(--warning-text)' : 'var(--text-secondary)')
-                  }}>
-                    {isOutOfStock ? 'Sold Out' : `${prod.stock_quantity} left`}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+          {filteredProducts.map((prod) => (
+            <ProductCard
+              key={prod.id}
+              product={prod}
+              inCartQty={cart.find(item => item.product.id === prod.id)?.quantity || 0}
+              onAdd={addToCart}
+            />
+          ))}
         </div>
       </div>
 

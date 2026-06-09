@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
-import { useToast } from '../../hooks/useToast';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DollarSign, AlertTriangle, TrendingUp, TrendingDown, ArrowRight, Loader } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -38,37 +38,34 @@ interface LowStockProduct {
 }
 
 export const DashboardPage: React.FC = () => {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const toast = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const [statsRes, chartRes, topRes, lowRes] = await Promise.all([
-          api.get('/dashboard/stats'),
-          api.get('/dashboard/chart'),
-          api.get('/dashboard/top-products'),
-          api.get('/dashboard/low-stock'),
-        ]);
+  // ─── Cached queries — 60s staleTime so analytics auto-refresh silently in background ───
+  const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => { const r = await api.get('/dashboard/stats'); return r.data; },
+    staleTime: 60 * 1000,
+  });
 
-        setStats(statsRes.data);
-        setChartData(chartRes.data);
-        setTopProducts(topRes.data);
-        setLowStock(lowRes.data);
-      } catch (err: any) {
-        toast.error(err.message || 'Failed to load dashboard data.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const { data: chartData = [], isLoading: chartLoading } = useQuery<ChartDataPoint[]>({
+    queryKey: ['dashboard-chart'],
+    queryFn: async () => { const r = await api.get('/dashboard/chart'); return r.data; },
+    staleTime: 60 * 1000,
+  });
 
-    fetchDashboardData();
-  }, [toast]);
+  const { data: topProducts = [], isLoading: topLoading } = useQuery<TopProduct[]>({
+    queryKey: ['dashboard-top-products'],
+    queryFn: async () => { const r = await api.get('/dashboard/top-products'); return r.data; },
+    staleTime: 60 * 1000,
+  });
+
+  const { data: lowStock = [], isLoading: lowLoading } = useQuery<LowStockProduct[]>({
+    queryKey: ['dashboard-low-stock'],
+    queryFn: async () => { const r = await api.get('/dashboard/low-stock'); return r.data; },
+    staleTime: 60 * 1000,
+  });
+
+  const isLoading = statsLoading || chartLoading || topLoading || lowLoading;
 
   if (isLoading) {
     return (

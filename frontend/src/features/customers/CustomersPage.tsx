@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
 import { useToast } from '../../hooks/useToast';
@@ -15,47 +16,35 @@ interface Customer {
 }
 
 export const CustomersPage: React.FC = () => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const queryClient = useQueryClient();
+
+  // ─── Filter & pagination state ───
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Pagination
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
 
-  // Loading States
-  const [isLoading, setIsLoading] = useState(true);
+  // ─── Server state via TanStack Query ───
+  const { data: customersRes, isLoading } = useQuery({
+    queryKey: ['customers', page, searchQuery],
+    queryFn: async () => { const r = await api.get(`/customers?page=${page}&search=${searchQuery}`); return r.data; },
+    placeholderData: (prev: any) => prev,
+  });
+
+  const customers: Customer[] = customersRes?.data      ?? [];
+  const totalPages: number    = customersRes?.last_page  ?? 1;
+  const totalItems: number    = customersRes?.total      ?? 0;
+
+  const invalidateCustomers = () => queryClient.invalidateQueries({ queryKey: ['customers'] });
+
+  // ─── Local UI state ───
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-
-  // Form Fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [formErrors, setFormErrors] = useState<any>({});
 
   const toast = useToast();
-
-  const fetchCustomers = async () => {
-    setIsLoading(true);
-    try {
-      const res = await api.get(`/customers?page=${page}&search=${searchQuery}`);
-      setCustomers(res.data.data);
-      setTotalPages(res.data.last_page);
-      setTotalItems(res.data.total);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to fetch customers');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCustomers();
-  }, [page, searchQuery]);
 
   const openAddModal = () => {
     setEditingCustomer(null);
@@ -95,7 +84,9 @@ export const CustomersPage: React.FC = () => {
         toast.success('Customer registered successfully!');
       }
       setIsModalOpen(false);
-      fetchCustomers();
+      invalidateCustomers();
+      // Also refresh POS customers dropdown cache
+      queryClient.invalidateQueries({ queryKey: ['pos-customers'] });
     } catch (err: any) {
       if (err.errors) {
         setFormErrors(err.errors);
@@ -115,7 +106,8 @@ export const CustomersPage: React.FC = () => {
     try {
       await api.delete(`/customers/${id}`);
       toast.success('Customer deleted');
-      fetchCustomers();
+      invalidateCustomers();
+      queryClient.invalidateQueries({ queryKey: ['pos-customers'] });
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete customer');
     }
