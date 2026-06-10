@@ -71,8 +71,8 @@ const ProductCard = memo(({ product, inCartQty, onAdd }: ProductCardProps) => {
       {inCartQty > 0 && (
         <div style={{
           position: 'absolute',
-          top: '-8px',
-          right: '-8px',
+          top: '8px',
+          right: '8px',
           backgroundColor: 'var(--accent)',
           color: 'white',
           width: '22px',
@@ -290,7 +290,6 @@ export const PosPage: React.FC = () => {
       setLatestOrderReceipt(res.data.order);
 
       // Invalidate the products cache — next render will get fresh stock levels
-      // (instant from cache, silently revalidates in the background)
       queryClient.invalidateQueries({ queryKey: ['pos-products'] });
 
       // Clear checkout/cart state
@@ -602,7 +601,7 @@ export const PosPage: React.FC = () => {
       display: 'grid',
       gridTemplateColumns: '1fr 380px',
       gap: '20px',
-      height: 'calc(100vh - var(--header-height) - 48px)',
+      height: 'calc(100vh - 32px)',
     }} className="pos-terminal-layout">
       
       {/* COLUMN 1: PRODUCT PICKER GRID */}
@@ -722,11 +721,7 @@ export const PosPage: React.FC = () => {
       {/* MODAL 1: CHOOSE PAYMENT METHOD SHEET */}
       {isPaymentModalOpen && (
         <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
           backgroundColor: 'rgba(15, 23, 42, 0.4)',
           display: 'flex',
           alignItems: 'center',

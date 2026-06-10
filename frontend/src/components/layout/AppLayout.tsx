@@ -1,7 +1,6 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
-import { TopBar } from './TopBar';
 import { MobileNav } from './MobileNav';
 
 export const AppLayout: React.FC = () => {
@@ -17,17 +16,14 @@ export const AppLayout: React.FC = () => {
         flexDirection: 'column',
         minHeight: '100vh',
         minWidth: 0,        /* ← prevents flex child from expanding past viewport */
-        overflow: 'hidden', /* ← clips any overflowing children horizontally */
+        overflowX: 'clip',  /* ← clips horizontal overflow without breaking vertical sticky positioning */
       }}>
-        {/* Top Header Bar */}
-        <TopBar />
-
         {/* Dynamic Route Content */}
         <main
           className="page-content animate-fade-in"
           style={{
             flex: 1,
-            padding: '24px',
+            padding: '16px',
             marginLeft: 'var(--sidebar-width)', // Responsive, overridden to 0 on mobile in index.css
             transition: 'margin-left 0.2s ease',
           }}

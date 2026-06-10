@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { formatCurrency } from '../../utils/format';
@@ -152,77 +153,90 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Page Header */}
-      <div className="page-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Inventory Management</h2>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Total Products: {totalItems}</p>
-        </div>
-        <button onClick={openAddModal} className="btn btn-primary">
-          <Plus size={16} /> Add Product
-        </button>
-      </div>
-
-      {/* Filters & Search Row */}
-      <div className="page-filter-bar" style={{
+      {/* Sticky Header Container for Page Header and Filters */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        backgroundColor: 'var(--bg-page)',
         display: 'flex',
-        flexWrap: 'wrap',
-        gap: '16px',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: 'var(--bg-card)',
-        padding: '16px',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border)',
+        flexDirection: 'column',
+        gap: '20px',
+        paddingTop: '4px',
+        paddingBottom: '8px',
       }}>
-        {/* Category Filter Pills */}
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', flex: 1 }}>
-          <button
-            onClick={() => { setSelectedCategory('all'); setPage(1); }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '20px',
-              fontSize: '13px',
-              fontWeight: 600,
-              backgroundColor: selectedCategory === 'all' ? 'var(--accent-light)' : 'transparent',
-              color: selectedCategory === 'all' ? 'var(--accent-text)' : 'var(--text-secondary)',
-              border: `1px solid ${selectedCategory === 'all' ? 'var(--accent)' : 'var(--border)'}`,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            All Categories
+        {/* Page Header */}
+        <div className="page-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Inventory Management</h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Total Products: {totalItems}</p>
+          </div>
+          <button onClick={openAddModal} className="btn btn-primary">
+            <Plus size={16} /> Add Product
           </button>
-          {categories.map((cat) => (
+        </div>
+
+        {/* Filters & Search Row */}
+        <div className="page-filter-bar" style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '16px',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: 'var(--bg-card)',
+          padding: '16px',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border)',
+        }}>
+          {/* Category Filter Pills */}
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', flex: 1 }}>
             <button
-              key={cat.id}
-              onClick={() => { setSelectedCategory(cat.id.toString()); setPage(1); }}
+              onClick={() => { setSelectedCategory('all'); setPage(1); }}
               style={{
                 padding: '6px 14px',
                 borderRadius: '20px',
                 fontSize: '13px',
                 fontWeight: 600,
-                backgroundColor: selectedCategory === cat.id.toString() ? 'var(--accent-light)' : 'transparent',
-                color: selectedCategory === cat.id.toString() ? 'var(--accent-text)' : 'var(--text-secondary)',
-                border: `1px solid ${selectedCategory === cat.id.toString() ? 'var(--accent)' : 'var(--border)'}`,
+                backgroundColor: selectedCategory === 'all' ? 'var(--accent-light)' : 'transparent',
+                color: selectedCategory === 'all' ? 'var(--accent-text)' : 'var(--text-secondary)',
+                border: `1px solid ${selectedCategory === 'all' ? 'var(--accent)' : 'var(--border)'}`,
                 whiteSpace: 'nowrap',
               }}
             >
-              {cat.name}
+              All Categories
             </button>
-          ))}
-        </div>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => { setSelectedCategory(cat.id.toString()); setPage(1); }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  backgroundColor: selectedCategory === cat.id.toString() ? 'var(--accent-light)' : 'transparent',
+                  color: selectedCategory === cat.id.toString() ? 'var(--accent-text)' : 'var(--text-secondary)',
+                  border: `1px solid ${selectedCategory === cat.id.toString() ? 'var(--accent)' : 'var(--border)'}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
 
-        {/* Search Input */}
-        <div className="page-search-wrapper" style={{ position: 'relative', minWidth: '260px' }}>
-          <input
-            type="text"
-            className="form-input"
-            placeholder="Search by name, SKU or barcode..."
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-            style={{ paddingLeft: '36px' }}
-          />
-          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          {/* Search Input */}
+          <div className="page-search-wrapper" style={{ position: 'relative', minWidth: '260px' }}>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Search by name, SKU or barcode..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+              style={{ paddingLeft: '36px' }}
+            />
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          </div>
         </div>
       </div>
 
@@ -355,7 +369,7 @@ export const ProductsPage: React.FC = () => {
       </div>
 
       {/* Create/Edit Product Modal Dialog */}
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div style={{
           position: 'fixed',
           top: 0,
@@ -523,7 +537,8 @@ export const ProductsPage: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
